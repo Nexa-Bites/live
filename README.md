@@ -40,7 +40,7 @@ pip install -r requirements.txt  # Install Python dependencies
 ### 3️⃣ Run the Backend API
 
 
-### 4️⃣ Run the Frontend (React)
+### 4️⃣ Run the Frontend 
 
 
 
