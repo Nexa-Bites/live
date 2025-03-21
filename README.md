@@ -5,6 +5,10 @@
 ## 🚀 Project Overview
 This project implements a **liveness detection model** to enhance security in **e-identity and verification systems** for blockchain-based applications. The model detects spoofing attacks such as **print, replay, 3D mask, and deepfake attacks** to ensure secure authentication.
 
+<p align="center">
+  <img src="https://github.com/Nexa-Bites/trustid_front_and_backend/blob/main/WhatsApp%20Image%202025-03-20%20at%2013.23.22_3df22ccf.png?raw=true" alt="TrustID Logo" width="250">
+</p>
+
 ## 🛠️ Technologies Used
 - **Deep Learning**: TensorFlow, Keras
 - **Computer Vision**: OpenCV, DeepFace
