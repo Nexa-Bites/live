@@ -8,6 +8,7 @@ Original file is located at
 """
 
 
+
 import kagglehub
 
 
@@ -19,36 +20,43 @@ import os
 
 dataset_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7"
 
-
 files = os.listdir(dataset_path)
 print("Dataset Files:", files)
 
 import pandas as pd
 
+
 csv_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/ibeta_info.csv"
 
+
 df = pd.read_csv(csv_path)
-print(df.head())  
+print(df.head())
+
 import os
 
+# Define the path to the dataset folder
 dataset_folder = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/rose_p3"
 
+# List the files inside
 files = os.listdir(dataset_folder)
 
+# Show first 10 files
 print("Sample files:", files[:10])
 
 import os
 
+# Choose a folder 
 folder_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/rose_p3/real"
 
-
+# List files inside
 files = os.listdir(folder_path)
 
-
+# Show first 10 files
 print("Sample files in 'real':", files[:10])
 
 import os
- 
+
+
 user_folder_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/rose_p3/real/user035"
 
 
@@ -60,25 +68,31 @@ import os
 
 device_folder_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/rose_p3/real/user035/andr"
 
+# List files inside
 files = os.listdir(device_folder_path)
 
+# Show first 10 files
 print("Sample files in 'real/user035/andr':", files[:10])
 
 import cv2
 import os
 
+# Define base dataset path
 base_path = "/root/.cache/kagglehub/datasets/trainingdatapro/ibeta-level-1-liveness-detection-dataset-part-1/versions/7/rose_p3"
 
+# Paths for real and spoof videos
 real_video_path = os.path.join(base_path, "real")
 spoof_types = ["mask", "mask3d", "monitor", "outline", "outline3d"]
 spoof_video_paths = [os.path.join(base_path, spoof) for spoof in spoof_types]
 
+# Output directories
 real_output_folder = "extracted_real_frames"
 spoof_output_folder = "extracted_spoof_frames"
 
 os.makedirs(real_output_folder, exist_ok=True)
 os.makedirs(spoof_output_folder, exist_ok=True)
 
+# Function to extract frames from videos
 def extract_frames(video_folder, output_folder):
     for user in os.listdir(video_folder):
         user_folder = os.path.join(video_folder, user)
@@ -99,7 +113,7 @@ def extract_frames(video_folder, output_folder):
                                 if not ret:
                                     break
 
-                                if frame_count % 10 == 0: 
+                                if frame_count % 10 == 0:  # Save every 10th frame
                                     frame_filename = f"{user}_{device}_{video_file}_frame_{frame_count}.jpg"
                                     frame_filepath = os.path.join(output_folder, frame_filename)
                                     cv2.imwrite(frame_filepath, frame)
@@ -108,11 +122,11 @@ def extract_frames(video_folder, output_folder):
 
                             cap.release()
 
-
+# Extract frames for real users
 extract_frames(real_video_path, real_output_folder)
 print(f"✅ Real face frames saved in: {real_output_folder}")
 
-
+# Extract frames for spoof videos
 for spoof_path in spoof_video_paths:
     if os.path.exists(spoof_path):
         extract_frames(spoof_path, spoof_output_folder)
@@ -120,12 +134,9 @@ for spoof_path in spoof_video_paths:
 print(f"✅ Spoof attack frames saved in: {spoof_output_folder}")
 
 
-
 import os
 import cv2
 import numpy as np
-
-
 
 
 
@@ -139,7 +150,7 @@ preprocessed_spoof_folder = "preprocessed_spoof"
 os.makedirs(preprocessed_real_folder, exist_ok=True)
 os.makedirs(preprocessed_spoof_folder, exist_ok=True)
 
-IMG_SIZE = (224, 224)  
+IMG_SIZE = (224, 224)  # Resize images to 224x224
 
 def preprocess_images(input_folder, output_folder):
     for image_file in tqdm(os.listdir(input_folder), desc=f"Processing {input_folder}"):
@@ -147,19 +158,20 @@ def preprocess_images(input_folder, output_folder):
 
         img = cv2.imread(img_path)
         if img is None:
-            continue 
+            continue  # Skip if file is not an image
 
 
-         
+          # Resize
         img = cv2.resize(img, IMG_SIZE)
 
-       
+        # Normalize (scale pixels to [0,1])
         img = img.astype(np.float32) / 255.0
 
+         # Save preprocessed image
         save_path = os.path.join(output_folder, image_file)
-        cv2.imwrite(save_path, (img * 255).astype(np.uint8))  
+        cv2.imwrite(save_path, (img * 255).astype(np.uint8))  # Convert back to uint8 for saving
 
-        
+        # Process real and spoof images
 preprocess_images(real_input_folder, preprocessed_real_folder)
 preprocess_images(spoof_input_folder, preprocessed_spoof_folder)
 
@@ -171,11 +183,51 @@ from deepface import DeepFace
 from tqdm import tqdm
 import pickle
 
-preprocessed_real_folder = "preprocessed_real"
+
+
 preprocessed_spoof_folder = "preprocessed_spoof"
+real_input_folder = "preprocessed_real"
+
+augmented_real_folder = "augmented_real"
+os.makedirs(augmented_real_folder, exist_ok=True)
+
+def augment_image(image_path, save_path):
+    image = cv2.imread(image_path)
+
+    # Apply random brightness, rotation, and flipping
+    brightness = random.uniform(0.8, 1.2)
+    image = cv2.convertScaleAbs(image, alpha=brightness, beta=0)
+
+    if random.choice([True, False]):
+        image = cv2.flip(image, 1)  # Horizontal flip
+
+    angle = random.choice([-10, 10])
+    h, w = image.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w//2, h//2), angle, 1.0)
+    image = cv2.warpAffine(image, matrix, (w, h))
+
+    cv2.imwrite(save_path, image)
+
+print(f"Checking folder: {real_input_folder}")
+print(f"Found files: {os.listdir(real_input_folder)}")
+
+import random
+
+real_images = os.listdir(real_input_folder)
+num_new_images = 2414 - 538  # Make Real count equal to Spoof count
+
+for i in range(num_new_images):
+    img_path = os.path.join(real_input_folder, random.choice(real_images))
+    save_path = os.path.join(augmented_real_folder, f"aug_{i}.jpg")
+    augment_image(img_path, save_path)
+
+print(f"✅ Augmented {num_new_images} new Real images!")
 
 MODEL_NAME = "Facenet"
 
+preprocessed_spoof_folder = "preprocessed_spoof"
+
+# Function to extract features
 def extract_features(input_folder):
     features = []
     labels = []
@@ -184,11 +236,11 @@ def extract_features(input_folder):
         img_path = os.path.join(input_folder, image_file)
 
         try:
-            
+            # Extract embedding
             embedding = DeepFace.represent(img_path, model_name=MODEL_NAME, enforce_detection=False)[0]['embedding']
             features.append(embedding)
 
-           
+            # Assign label (0 for real, 1 for spoof)
             label = 0 if "real" in input_folder else 1
             labels.append(label)
         except Exception as e:
@@ -196,11 +248,13 @@ def extract_features(input_folder):
 
     return np.array(features), np.array(labels)
 
+aug_real_features, aug_real_labels = extract_features(augmented_real_folder)
 real_features, real_labels = extract_features(preprocessed_real_folder)
-spoof_features, spoof_labels = extract_features(preprocessed_spoof_folder)
 
-X = np.vstack((real_features, spoof_features))
-y = np.hstack((real_labels, spoof_labels))
+X_real = np.vstack((real_features, aug_real_features))
+y_real = np.hstack((real_labels, aug_real_labels))
+
+spoof_features, spoof_labels = extract_features(preprocessed_spoof_folder)
 
 with open("features.pkl", "wb") as f:
     pickle.dump((X, y), f)
@@ -213,18 +267,18 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-
+# Load features from 'features.pkl'
 with open("features.pkl", "rb") as f:
     X, y = pickle.load(f)
 
-
+# Convert to NumPy arrays (if needed)
 X = np.array(X)
 y = np.array(y)
 
-
+# Split into training (80%) and testing (20%) sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-
+# Normalize features (optional, helps with SVM performance)
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
@@ -232,104 +286,83 @@ X_test = scaler.transform(X_test)
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 
-
+# Train an SVM classifier
 svm_model = SVC(kernel='linear', probability=True)
 svm_model.fit(X_train, y_train)
+print("✅ SVM Model Trained!")
 
+# Predict on the test set
+#y_pred = svm_model.predict(X_test)
 
-y_pred = svm_model.predict(X_test)
-
-
-accuracy = accuracy_score(y_test, y_pred)
-print(f"✅ SVM Accuracy: {accuracy:.4f}")
-print(classification_report(y_test, y_pred))
+# Evaluate the model
+#accuracy = accuracy_score(y_test, y_pred)
+#print(f"✅ SVM Accuracy: {accuracy:.4f}")
+#print(classification_report(y_test, y_pred))
 
 from sklearn.ensemble import RandomForestClassifier
 
-
+# Train a Random Forest classifier
 rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
 rf_model.fit(X_train, y_train)
+print("✅ Random Forest Model Trained!")
 
 
-y_pred_rf = rf_model.predict(X_test)
+# Predict on the test set
+#y_pred_rf = rf_model.predict(X_test)
 
-
-accuracy_rf = accuracy_score(y_test, y_pred_rf)
-print(f"✅ Random Forest Accuracy: {accuracy_rf:.4f}")
-print(classification_report(y_test, y_pred_rf))
-
-import pickle
-import numpy as np
-
-
-with open("features.pkl", "rb") as f:
-    X, y = pickle.load(f)
-
-print(f"✅ Loaded features: {X.shape}, Labels: {y.shape}")
-
-
-X = X / np.max(X)
-
-from sklearn.model_selection import train_test_split
-
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+# Evaluate the model
+#accuracy_rf = accuracy_score(y_test, y_pred_rf)
+#print(f"✅ Random Forest Accuracy: {accuracy_rf:.4f}")
+#print(classification_report(y_test, y_pred_rf))
 
 import tensorflow as tf
 from tensorflow.keras import layers, models
-from sklearn.preprocessing import StandardScaler
 
 
+#Normalize features 
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 
 model = models.Sequential([
-    layers.Dense(128, activation='relu', input_shape=(X_train.shape[1],)), 
-    layers.Dropout(0.3),  
-    layers.Dense(64, activation='relu'),  
-    layers.Dense(1, activation='sigmoid') 
+    layers.Dense(128, activation='relu', input_shape=(X_train.shape[1],)),
+    layers.Dropout(0.3),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
 ])
 
-
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-
 history = model.fit(X_train_scaled, y_train, epochs=20, batch_size=16, validation_data=(X_test_scaled, y_test))
 
+# Save Model
+model.save("liveness_model.h5")
+print("✅ Neural Network Model Trained & Saved!")
 
 test_loss, test_acc = model.evaluate(X_test_scaled, y_test)
-print(f"Test Accuracy: {test_acc:.4f}")
-
-import matplotlib.pyplot as plt
+print(f"🎯 Final Test Accuracy: {test_acc:.4f}")
 
 
-plt.plot(history.history['loss'], label='Training Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.title('Training vs. Validation Loss')
-plt.show()
-
-model.save("liveness_model.h5")
-
-from tensorflow.keras.models import load_model
-
-model = load_model("liveness_model.h5")
-
-model.summary()  
-
-y_pred = model.predict(X_test_scaled)
-
-new_image_path = "SIHU.JPG"
-new_embedding = DeepFace.represent(new_image_path, model_name='Facenet', enforce_detection=False)[0]['embedding']
-new_embedding_scaled = scaler.transform([new_embedding])
-prediction = model.predict(new_embedding_scaled)
-print("Real" if prediction < 0.5 else "Spoof")
-
-print(prediction)
 
 
+#import matplotlib.pyplot as plt
+
+# Plot training & validation loss
+#plt.plot(history.history['loss'], label='Training Loss')
+#plt.plot(history.history['val_loss'], label='Validation Loss')
+#plt.xlabel('Epochs')
+#plt.ylabel('Loss')
+#plt.legend()
+#plt.title('Training vs. Validation Loss')
+#plt.show()
+
+#model.save("liveness_model.h5")
+
+#from tensorflow.keras.models import load_model
+
+#model = load_model("liveness_model.h5")
+
+#model.summary()  # Check if the architecture is intact
+
+#y_pred = model.predict(X_test_scaled)
 
